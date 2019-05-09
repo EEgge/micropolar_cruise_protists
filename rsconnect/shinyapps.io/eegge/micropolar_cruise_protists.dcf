@@ -1,0 +1,10 @@
+name: micropolar_cruise_protists
+title:
+username:
+account: eegge
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 918570
+bundleId: 2070444
+url: https://eegge.shinyapps.io/micropolar_cruise_protists/
+when: 1557343728.45157
