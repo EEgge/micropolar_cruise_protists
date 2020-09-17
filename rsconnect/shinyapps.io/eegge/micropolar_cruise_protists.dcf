@@ -5,9 +5,9 @@ account: eegge
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 918570
-bundleId: 2624741
+bundleId: 2924516
 url: https://eegge.shinyapps.io/micropolar_cruise_protists/
-when: 1574962516.51923
+when: 1585169755.78315
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: adonistest.R|copyofapp.R|sads_test.R|zoomtest.R|nmds-app/.DS_Store|nmds-app/.Rhistory|results/ab.txt|src/MP_nmds_sfsep.Rmd
+ignoredFiles: adonistest.R|cluster_barplot_figures.R|Figure_3_diatom_genus_composition.pdf|Figure_cluster_barplot_syndiniales.pdf|indicatorvalues_reactive.R|manip_datafiles.R|nmds_preapp.R|rankabund_forclust.R|sads_test.R|zoomtest.R|nmds-app/.DS_Store|nmds-app/.Rhistory|results/ab.txt|src/MP_nmds_sfsep.Rmd

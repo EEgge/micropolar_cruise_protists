@@ -236,7 +236,7 @@ ui <- navbarPage(
      
      ))),
   
-  #Multivariate test of different OTU communities between cruises
+  #### Multivariate test of different OTU communities between cruises ####
   tabPanel("manyglm test - season",
            
            # Sidebar with radio buttons to select size fraction, checkbox to select one or more taxonomic groups
@@ -258,7 +258,7 @@ ui <- navbarPage(
                ))),
   
   
-  #Tab that shows rank-abundance of the OTUs within the selected Division(s). Color code shows the selected taxonomic level.
+  #### Rank-abundance of the OTUs within the selected Division(s). Color code shows the selected taxonomic level. ####
   tabPanel("Rank-abundance",
            fluidPage(sidebarLayout(
              sidebarPanel(
@@ -277,7 +277,7 @@ ui <- navbarPage(
                plotlyOutput(outputId = "raPlot2", height = 600, width = 1500)
              )))),
   
-  #Tab with plot of alpha diversity (OTU richness) by cruise and size fraction for the selected division(s)
+  #### alpha diversity (OTU richness) by cruise and size fraction for the selected division(s) ####
   tabPanel("Alpha diversity - richness & evenness",
            fluidPage(sidebarLayout(
              sidebarPanel(
@@ -292,7 +292,7 @@ ui <- navbarPage(
                column(7, plotlyOutput(outputId = "evenPlot2", height = 600)))
              )))),
   
-  #Tab with plot of so-called "Local contribution to beta diversity"
+  #### "Local contribution to beta diversity" (LCBD) ####
   tabPanel("Beta diversity",
            fluidPage(sidebarLayout(
              sidebarPanel(
@@ -311,7 +311,8 @@ ui <- navbarPage(
                         
              
            ))),
-  #Tab with proportional read abundance of Chloroplast 16S data (DNA and RNA)
+  
+  #### Proportional read abundance of Chloroplast 16S data (DNA and RNA) ####
   tabPanel("Chloroplast 16S data",
            sidebarLayout(
              sidebarPanel(
@@ -328,9 +329,9 @@ ui <- navbarPage(
                plotlyOutput(outputId = "propPlotchl", height = 1000, width = 1000)
              )
            )
-  )
-  ,
-  #### Tab multipatt ####
+  ),
+  
+  #### Indicator Value Analysis Multipatt ####
   tabPanel("Characteristic OTUs",
             sidebarLayout(
               sidebarPanel(
@@ -373,12 +374,10 @@ ui <- navbarPage(
 
 
 #### Server ####
-
-#Create barplot with proportional abundance for the selected Division(s), at the selected taxonomic level  
 server <- function(input, output, session) {
-  #### Barplots, all fractions ####
+  #### Barplots, all fractions, with proportional abundance ####
   prop_tax <- reactive({
-    taxxx <- input$taxlevel #Select which taxonomic level to group by
+    taxlevel_barplot <- input$taxlevel #Select which taxonomic level to group by
     
     otutab_sfsep <- otutab_sfsep %>% select(-three200.2) #Remove 'fake' size fraction 3-200
     if (input$taxo_group2 != "All") {
@@ -401,17 +400,16 @@ server <- function(input, output, session) {
     otutab_tax <- cbind.data.frame(otutab_tax_notnum, otutab_tax_selectprop)
     otutab_tax[is.na(otutab_tax)] <- 0 #NA's because some samples have 0% of a certain class 
     
-   #  
     otutab_tax$total <- otutab_tax %>% select_if(is.numeric) %>% rowSums()
     taxlevtab <- otutab_tax %>% select(input$taxlevel) %>% droplevels.data.frame()
 
-    #Presence-absence for OTU count per taxonomic group
+    #Transform to presence-absence for OTU count per taxonomic group
     otutab_sfsep_pa <- otutab_sfsep
     otutab_sfsep_pa[otutab_sfsep_pa>0] <- 1
     otutab_tax_pa0 <- otutab_tax0
     otutab_tax_pa0[otutab_tax_pa0>0] <- 1
     
-    ########Fix proportion of total or select, presence absence
+    #Proportion of total or select, presence absence
     otutab_tax_pa_num <- otutab_tax_pa0 %>% select_if(is.numeric)
     
     if (input$propchoice == "selectgroup") {
@@ -420,16 +418,14 @@ server <- function(input, output, session) {
       otutab_tax_pa_selectprop <- otutab_tax_pa_num
     }
     
-    sjekk_prop <- colSums(otutab_tax_pa_selectprop)[1] ###15.04.2020 her er jeg
-    #####
+    sjekk_prop <- colSums(otutab_tax_pa_selectprop)[1]
     otutab_tax_pa_notnum <- otutab_tax_pa0 %>% select_if(negate(is.numeric))
     
     otutab_tax_pa <- cbind.data.frame(otutab_tax_pa_notnum, otutab_tax_pa_selectprop)
     otutab_tax_pa[is.na(otutab_tax_pa)] <- 0 #NA's because some samples have 0% of a certain class 
     
-    #  
+    
     otutab_tax_pa$total <- otutab_tax_pa %>% select_if(is.numeric) %>% rowSums()
-    ########
 
     taxgroupspre <-  select(otutab_tax, -total) %>%   group_by_(input$taxlevel) %>% summarise_if(is.numeric, sum)
 
@@ -438,7 +434,7 @@ server <- function(input, output, session) {
     
     
 
-
+    # Select only taxonomic groups that constitute >=5% of the reads in at least one sample, to limit number of categories in stacked barchart.
     limfun <- function(x) {
       ifelse(x>=0.05,1,0)
     }
@@ -454,7 +450,7 @@ server <- function(input, output, session) {
     
     
     taxgroupspre_bin_sums <- taxgroupspre_bin2 %>% select_if(is.numeric) %>% mutate(rowsumm = rowSums(.))
-    taxgroupspre_bin_sums$taxgroups <- as.vector(taxgroupspre[[taxxx]])
+    taxgroupspre_bin_sums$taxgroups <- as.vector(taxgroupspre[[taxlevel_barplot]])
     taxgroupspre_bin_sums_yes <- filter(taxgroupspre_bin_sums, rowsumm >0) %>% select(taxgroups)
     
     
@@ -519,15 +515,6 @@ server <- function(input, output, session) {
     taxgroups_select3tdf$cruise <-  factor(c(cruisesfsep_tb$cruise, rep("total",5)), ordered = T)
 
 
-    # taxgroups_select3tdf$sf <- factor(c(rep("sf0.4.3", npico), rep("sf3.10", nthree10),
-    #                      rep("sf10.50", nten50), rep("sf50.200", nfifty200), rep("sf3.180", nthree180)), ordered = T,
-    #                      levels = c("sf0.4.3", "sf3.10", "sf3.180", "sf10.50", "sf50.200"))
-    #
-    # taxgroups_select3tdf$stdep <-  StationDepthsfsep_tb
-    # taxgroups_select3tdf$cruise <-  factor(cruisesfsep_tb$cruise, ordered = T)
-    #
-
-
     taxgroups_select3tdf_mp12 <- taxgroups_select3tdf %>% filter(cruise %in% c("MP1", "MP2"))
 
     taxgroups_select3tdf_mp345 <- taxgroups_select3tdf %>% filter(cruise %in% c("MP3", "MP4", "MP5"))
@@ -539,6 +526,7 @@ server <- function(input, output, session) {
    taxgroups_select3tdf_mp345melt <- melt(taxgroups_select3tdf_mp345)
    taxgroups_select3tdf_totalmelt <- melt(taxgroups_select3tdf_total)
    
+   #Recode cruise names to more meaningful
    taxgroups_select3tdf_mp12melt$cruise <- recode(taxgroups_select3tdf_mp12melt$cruise, "MP1" = "Jan", "MP2" = "March") 
    taxgroups_select3tdf_mp345melt$cruise <- recode(taxgroups_select3tdf_mp345melt$cruise, "MP3" = "May", "MP4" = "Aug", "MP5" = "Nov")
 
@@ -577,8 +565,7 @@ server <- function(input, output, session) {
 
     totalplotly
 
-    #####
-    ####Proportional OTU richness####
+    #### Barplot, proportional OTU richness ####
     if (dim(taxgroupspre_bin_sums_yes)[1] < dim(taxgroupspre_bin_sums)[1]) {
       Taxonomic_group <- c(taxgroupspre_bin_sums_yes$taxgroups,"Other")
       othersum_pa <- colSums(taxgroups_pa_other[,-1])
@@ -678,12 +665,12 @@ server <- function(input, output, session) {
     totalplotly_pa <- ggplotly(ptotal_pa, tooltip = "text")
 
     totalplotly_pa
-   #  #####
+  
     
     list(MP12plotly = MP12plotly, MP345plotly = MP345plotly, totalplotly = totalplotly, MP12plotly_pa = MP12plotly_pa, MP345plotly_pa = MP345plotly_pa, totalplotly_pa =totalplotly_pa, sjekk_prop = sjekk_prop)
   })
     
-    ###Alpha diversity 
+  #### Alpha diversity - Richness, Shannon index, evenness ####
   alpha_div <- reactive({
     if (input$taxo_group_adiv != "All") {
       
@@ -707,8 +694,8 @@ server <- function(input, output, session) {
     richtab_tdf$N2 <- diversity(richtab_t, "inv")
     richtab_tdf$E10 <- richtab_tdf$N1/richtab_tdf$richness
     richtab_tdf$E20 <- richtab_tdf$N2/richtab_tdf$richness
-    ######
   
+    # Calculate percent of maximum richness
     percofmax <- c(NULL)
     percofmax[c(1:npico)] <- 100 * richtab_tdf$richness[c(1:npico)]/max(richtab_tdf$richness[c(1:npico)])
     percofmax[c(45:70)] <- 100 * richtab_tdf$richness[c(45:70)]/max(richtab_tdf$richness[c(45:70)])
@@ -718,11 +705,7 @@ server <- function(input, output, session) {
     
     richtab_tdf$percofmax <- round(percofmax,0)
     
-    
-    
-    
-    #######
-    
+    #Create table for ggplot
     richtab_tdf$sample <- names(richtab)
     
     richtab_tdf$sf <- c(rep("sf0.4.3", npico), rep("sf3.10", nthree10), 
@@ -792,8 +775,8 @@ server <- function(input, output, session) {
     
   })
   
-  ###########
-  ####Chloroplast data####
+  
+  #### Chloroplast data ####
   prop_tax_chl <- reactive({
     taxlev_chl <- input$taxlevel_chl
     
@@ -825,36 +808,27 @@ server <- function(input, output, session) {
     limfun_chl <- function(x) {
        ifelse(x>=0.0005,1,0)
       }
-    # 
+ 
   
     taxgroupspre_mat_chl <- as.matrix(taxgroupspre_chl[,-1, drop = FALSE])
     taxgroupspre_bin_chl <- apply(taxgroupspre_mat_chl, 2, limfun_chl)
     
     
     
-    # 
+
     if (is.vector(taxgroupspre_bin_chl)) {
        taxgroupspre_bin2_chl <- as.data.frame(as.list(taxgroupspre_bin_chl))
      } else {
        taxgroupspre_bin2_chl <- as.data.frame(taxgroupspre_bin_chl)}
-    # 
-    # 
-    # 
+ 
     taxgroupspre_bin_sums_chl <- taxgroupspre_bin2_chl %>% select_if(is.numeric) %>% mutate(rowsumm = rowSums(.))
     taxgroupspre_bin_sums_chl$taxgroups <- as.vector(taxgroupspre_chl[[taxlev_chl]])
     taxgroupspre_bin_sums_yes_chl <- filter(taxgroupspre_bin_sums_chl, rowsumm >0) %>% select(taxgroups)
-    
-    
-    # 
-    # 
+ 
     taxgroups_select_chl <- taxgroupspre_chl %>% filter(get(input$taxlevel_chl) %in% taxgroupspre_bin_sums_yes_chl$taxgroups)
     
-       # 
-    # 
     taxgroups_other_chl <- taxgroupspre_chl %>% filter(!get(input$taxlevel_chl) %in% taxgroupspre_bin_sums_yes_chl$taxgroups)
-    # 
-    # 
-    # 
+
      if (dim(taxgroupspre_bin_sums_yes_chl)[1] < dim(taxgroupspre_bin_sums_chl)[1]) {
        Taxonomic_group_chl <- c(taxgroupspre_bin_sums_yes_chl$taxgroups,"Other")
        othersum_chl <- colSums(taxgroups_other_chl[,-1])
@@ -905,13 +879,15 @@ server <- function(input, output, session) {
   })
   
   
-  ###########
   #### NMDS + clustering ####
-  sftest <- reactive({
-    sf <- sfnames[[input$sizefract1]]
-    sjekk <- sf
-     taxlevel <- input$taxlevel_clustplot
-     taxogroup_clust <- input$taxo_group_clust
+  beta_div_nmds <- reactive({
+    # Get variables from input
+    sf <- sfnames[[input$sizefract1]] #Size fraction of interest
+    taxogroup_clust <- input$taxo_group_clust #Taxonomic group of interest
+    taxlevel <- input$taxlevel_clustplot #Taxonomic level of grouping for barplot
+    
+     
+    #select sample_sf, and the corresponding observations of environmental variables in meta_table
      if (input$sizefract1 == "sf3.200") {
        otutab_sf <- otutab_sfsep[c(three200, "Divisionlong", "newOTUid_wgen")]
        sampnames_meta_sf <- meta_table["sf0.4.3"]
@@ -933,18 +909,16 @@ server <- function(input, output, session) {
       otutab_sf_tax <- otutab_sf
     }
 
-   # 
-   # 
    otutab_sf_tax_num <- otutab_sf_tax %>% select(-Divisionlong, -newOTUid_wgen)
    numotus <- length(which(rowSums(otutab_sf_tax_num)>0))
    rownames(otutab_sf_tax) <- otutab_sf_tax$newOTUid_wgen
 
-   # 
+   
    
    #### Run NMDS + cluster ####
    nmds_tax <- mp_nmds(otutab_sf_tax %>% select(-Divisionlong, -newOTUid_wgen)) #function mp_nmds transposes otu table
    nmds_table <- data.frame(cbind(nmds_tax$points[,1], nmds_tax$points[,2], meta_sf))
-   # }
+   
 
 
 
@@ -1713,82 +1687,13 @@ server <- function(input, output, session) {
      
    })
    
-   ###manyglm season
-   ###Epipelagic
-   manyglm_season <- reactive({
-     sf <- sfnames[[input$sizefract3]]
-     zone <- input$zone
-     otutab_sf <- otutab_sfsep[c(as.character(sf), "Divisionlong", "newOTUid_wgen")]
-     sampnames_meta_sf <- meta_table[input$sizefract3]
-     meta_sf_all <- meta_table[match(colnames(otutab_sf %>% select(-Divisionlong, -newOTUid_wgen)),as.character(sampnames_meta_sf[,1])),]
-     
-     meta_sf <- droplevels(meta_sf_all)
-     
-     if (input$taxo_group4 != "All") {
-       
-       otutab_sf_tax <- otutab_sf %>% filter(Divisionlong %in% input$taxo_group4)
-     } else {
-       otutab_sf_tax <- otutab_sf
-     }
-    # str(otutab_sf_tax)
-     
-     limfun_mvabund <- function(x) {
-       ifelse(x>=0.01,1,0)
-     }
-     
-     otutab_sf_tax_num <- otutab_sf_tax %>% select_if(is.numeric)
-     otutab_sf_tax_num2 <- sweep(otutab_sf_tax_num, 2, colSums(otutab_sf_tax_num), FUN = "/")
-     
-     otutab_sf_tax_num2_mat <- as.matrix(otutab_sf_tax_num2)
-     otutab_sf_tax_num2_bin <- apply(otutab_sf_tax_num2_mat, 2, limfun_mvabund)
-     rownames(otutab_sf_tax_num2_bin) <- otutab_sf_tax$newOTUid_wgen
-     
-     
-     
-     if (is.vector(otutab_sf_tax_num2_bin)) {
-       otutab_sf_tax_num2_bin2 <- as.data.frame(as.list(otutab_sf_tax_num2_bin))
-     } else {
-       otutab_sf_tax_num2_bin2 <- as.data.frame(otutab_sf_tax_num2_bin)}
-     #str(otutab_sf_tax_num2_bin2)
-     
-     otutab_sf_tax_num2_bin_sums <- otutab_sf_tax_num2_bin2 %>% select_if(is.numeric) %>% mutate(rowsumm = rowSums(.))
-     otutab_sf_tax_num2_bin_sums$otuID <- rownames(otutab_sf_tax_num2_bin2)
-     otutab_sf_tax_num2_bin_sums_yes <- filter(otutab_sf_tax_num2_bin_sums, rowsumm >0) %>% select(otuID)
-     str(otutab_sf_tax_num2_bin_sums_yes)
-     
-     otutab_sf_tax_select <- otutab_sf_tax %>% filter(newOTUid_wgen %in% otutab_sf_tax_num2_bin_sums_yes$otuID)
-     rownames(otutab_sf_tax_select) <- otutab_sf_tax_select$newOTUid_wgen
-     
-     
-    
-   sf_zone <- meta_sf %>% filter(depthbin %in% zone) %>% select(input$sizefract3)
-   sf_zone[,1]
-   
-   otutab_sf_tax_select_zone <- otutab_sf_tax_select[as.character(sf_zone[,1])]
-   dim(otutab_sf_tax_select_zone)
-   meta_sf_zone <- meta_sf %>% filter(depthbin %in% input$zone)
-   #str(otutab_sf_tax_select)
-   
-   if (input$manyglm2 == "no") {
-     glm_tax_month_1_zone = NULL
-     an_tax_month_1_zone = NULL
-     tax_month_sf_sign_1_zone = NULL
-   } else {
-  
-   glm_tax_month_1_zone <- manyglm(round(t(otutab_sf_tax_select_zone[,c(1:length(sf_zone[,1]))])*40000,0) ~ meta_sf_zone$Cruise, family = "negative.binomial")
-   an_tax_month_1_zone <- anova.manyglm(glm_tax_month_1_zone, p.uni = "adjusted")
-   tax_month_sf_sign_1_zone <- cbind.data.frame("OTUid" = attr(an_tax_month_1_zone$uni.p, "dimnames")[[2]], "pval" = an_tax_month_1_zone$uni.p[2,]) %>% filter(pval <= 0.050)
-   }
-   
-   list(tax_month_sf_sign_1_zone = tax_month_sf_sign_1_zone)
-   })
 
    #### Indicator values (multipatt) ####
+   # Test whether OTUs are significantly differently distributed between the sample clusters delimited by hclust
    indval <- reactive({
-     sf <- sfnames[[input$sizefract_iva]]
-     #zone <- input$zone_iva
-     tax <- input$taxo_group_iva
-     numclust <- input$numclust_iva
+     sf <- sfnames[[input$sizefract_iva]] #select size fraction
+     tax <- input$taxo_group_iva #select taxonomic group
+     numclust <- input$numclust_iva #set number of clusters
      taxlevel <- input$taxlevel_iva
      
      otutab_sf_tax0 <- otutab_sfsep[,c(as.character(sf), taxlevels)] %>% 
@@ -1855,58 +1760,58 @@ server <- function(input, output, session) {
    })
    
    
-  
+ #### Output #### 
   output$distPlot <- renderPlotly({
-   sftest()$nmdsplotly
+   beta_div_nmds()$nmdsplotly
     })
 
   
   output$stress <- renderText({
-    paste("Stress value: ", round(sftest()$stress,2))
+    paste("Stress value: ", round(beta_div_nmds()$stress,2))
   })
   
   output$vp.month.depth <- renderText({
-    sftest()$vp.month.depth
+    beta_div_nmds()$vp.month.depth
   })
   output$plotclust <- renderPlotly({
-    sftest()$clustplot
+    beta_div_nmds()$clustplot
   })
   
   output$dendroplot <- renderPlot({
-    sftest()$dendroplot
+    beta_div_nmds()$dendroplot
   })
   
   output$barplot_clust_ra_ly <- renderPlotly({
-    sftest()$barplot_clust_ra_ly
+    beta_div_nmds()$barplot_clust_ra_ly
   })
   
   output$richplot_clust_ra_ly <- renderPlotly({
-    sftest()$richplot_clust_ra_ly
+    beta_div_nmds()$richplot_clust_ra_ly
   })
   
   output$slopeplot_clust_ra <- renderPlot({
-    sftest()$slopeplot_clust_ra
+    beta_div_nmds()$slopeplot_clust_ra
   })
   
   
-  output$sjekk <- renderText({sftest()$sjekk}) 
+  output$sjekk <- renderText({beta_div_nmds()$sjekk}) 
   
 
 
-output$difftab <- renderTable({sftest()$difftab}, 
+output$difftab <- renderTable({beta_div_nmds()$difftab}, 
                            caption = "p-values from adonis test
                            of differential OTU composition between depths.",
                            caption.placement = getOption("xtable.caption.placement", "bottom"), 
                            caption.width = getOption("xtable.caption.width", NULL))
-output$numotus <- renderText({ paste("Number of OTUs:", sftest()$numotus)})
+output$numotus <- renderText({ paste("Number of OTUs:", beta_div_nmds()$numotus)})
 
-output$anovaja <- renderText({sftest()$anovaja})
+output$anovaja <- renderText({beta_div_nmds()$anovaja})
 
-output$sigmp1 <- renderTable({sftest()$sigmp1})
-output$sigmp2 <- renderTable({sftest()$sigmp2})
-output$sigmp3 <- renderTable({sftest()$sigmp3})
-output$sigmp4 <- renderTable({sftest()$sigmp4})
-output$sigmp5 <- renderTable({sftest()$sigmp5})
+output$sigmp1 <- renderTable({beta_div_nmds()$sigmp1})
+output$sigmp2 <- renderTable({beta_div_nmds()$sigmp2})
+output$sigmp3 <- renderTable({beta_div_nmds()$sigmp3})
+output$sigmp4 <- renderTable({beta_div_nmds()$sigmp4})
+output$sigmp5 <- renderTable({beta_div_nmds()$sigmp5})
 
 output$tax_month_sf_sign_1_zone <- renderTable({manyglm_season()$tax_month_sf_sign_1_zone})
 
@@ -1969,8 +1874,8 @@ output$raPlot2 <- renderPlotly({
 
 
 
-#Alpha diversity
-##Richness
+##### Alpha diversity ####
+#### Richness ####
 output$richPlot1 <- renderPlotly({
   alpha_div()$rich12ly
   
@@ -2006,7 +1911,7 @@ output$downloadData_glmp3 <- downloadHandler(
     paste("pvalues_mp3", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(sftest()$sigmp3, file, row.names = FALSE)
+    write.csv(beta_div_nmds()$sigmp3, file, row.names = FALSE)
   }
 )
 
@@ -2015,7 +1920,7 @@ output$downloadData_glmp4 <- downloadHandler(
     paste("pvalues_mp4", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(sftest()$sigmp4, file, row.names = FALSE)
+    write.csv(beta_div_nmds()$sigmp4, file, row.names = FALSE)
   }
 )
 
@@ -2024,7 +1929,7 @@ output$downloadData_glmp5 <- downloadHandler(
     paste("pvalues_mp5", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(sftest()$sigmp5, file, row.names = FALSE)
+    write.csv(beta_div_nmds()$sigmp5, file, row.names = FALSE)
   }
 )
 
@@ -2033,7 +1938,7 @@ output$downloadOTUtab <- downloadHandler(
     paste("otutab", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(sftest()$otutab, file, row.names = FALSE)
+    write.csv(beta_div_nmds()$otutab, file, row.names = FALSE)
   }
 )
 
@@ -2042,7 +1947,7 @@ output$downloadnmdstab <- downloadHandler(
     paste("nmdstab", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(sftest()$nmds_table, file, row.names = FALSE)
+    write.csv(beta_div_nmds()$nmds_table, file, row.names = FALSE)
   }
 )
 
